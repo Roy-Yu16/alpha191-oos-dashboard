@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALPHA191 · 样本外检验台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#050810; --panel:#0c1220; --panel2:#111a2b; --line:#1a2540;
+  --cyan:#22d3ee; --red:#f87171; --green:#34d399; --amber:#fbbf24;
+  --txt:#dbe4f0; --dim:#7a8aa8; --faint:#4a5a78;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:'JetBrains Mono','PingFang SC','Microsoft YaHei',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px;overflow:hidden}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:99;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(255,255,255,.012) 2px 3px)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(120,140,180,.25);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(120,140,180,.45)}
+
+header{height:52px;display:flex;align-items:center;gap:16px;padding:0 18px;
+  background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:10}
+.radar{width:26px;height:26px;position:relative;flex:none}
+.radar .ring{position:absolute;inset:0;border:1px solid var(--cyan);border-radius:50%;opacity:.5}
+.radar .sweep{position:absolute;inset:0;border-radius:50%;overflow:hidden;
+  background:conic-gradient(from 0deg,rgba(34,211,238,.5),transparent 90deg);
+  animation:sweep 4.2s linear infinite}
+.radar .dot{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;
+  background:var(--cyan);border-radius:50%;box-shadow:0 0 6px var(--cyan)}
+@keyframes sweep{to{transform:rotate(360deg)}}
+h1{font-size:15px;font-weight:700;letter-spacing:.14em}
+h1 .sub{color:var(--dim);font-weight:300;letter-spacing:.2em;font-size:11px;margin-left:10px}
+.live{display:flex;align-items:center;gap:7px;margin-left:auto;font-size:10px;
+  letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 8px var(--green);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.hstat{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3}
+.hstat b{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--cyan)}
+.hstat span{font-size:9px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
+.hsep{width:1px;height:26px;background:var(--line)}
+
+#wrap{display:flex;height:calc(100vh - 52px)}
+aside{width:300px;flex:none;background:var(--panel);border-right:1px solid var(--line);
+  display:flex;flex-direction:column}
+.side-head{padding:12px 14px 10px;border-bottom:1px solid var(--line)}
+.side-head label{font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;display:block;margin-bottom:6px}
+#search{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--txt);
+  font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;border-radius:2px}
+#search:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(34,211,238,.15)}
+.sortrow{display:flex;gap:6px;margin-top:8px}
+.sortrow button{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--dim);
+  font-family:var(--sans);font-size:10px;letter-spacing:.08em;padding:5px 0;cursor:pointer;border-radius:2px}
+.sortrow button.on{color:var(--cyan);border-color:var(--cyan);background:rgba(34,211,238,.08)}
+#flist{flex:1;overflow-y:auto}
+.fitem{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;
+  border-bottom:1px solid rgba(26,37,64,.5);transition:background .15s}
+.fitem:hover{background:rgba(34,211,238,.05)}
+.fitem.on{background:rgba(34,211,238,.1);box-shadow:inset 3px 0 0 var(--cyan)}
+.fitem .fn{font-family:var(--mono);font-size:12px;font-weight:600;width:64px;flex:none}
+.fitem .fv{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim)}
+.fitem .fi{font-family:var(--mono);font-size:11px;width:52px;text-align:right}
+.fitem .add{flex:none;width:18px;height:18px;border:1px solid var(--line);border-radius:2px;
+  color:var(--faint);font-size:12px;line-height:16px;text-align:center;font-family:var(--mono)}
+.fitem .add:hover{border-color:var(--cyan);color:var(--cyan)}
+.fitem .add.in{background:var(--cyan);color:#050810;border-color:var(--cyan)}
+.pos{color:var(--red)} .neg{color:var(--green)} .zero{color:var(--faint)}
+
+main{flex:1;overflow-y:auto;padding:18px 22px 40px}
+section{margin-bottom:26px}
+.stitle{font-size:10px;letter-spacing:.22em;color:var(--faint);text-transform:uppercase;
+  margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.stitle::after{content:'';flex:1;height:1px;background:var(--line)}
+.q{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;
+  border:1px solid var(--faint);border-radius:50%;color:var(--faint);font-size:9px;
+  font-family:var(--mono);cursor:help;flex:none;letter-spacing:0}
+.q:hover{border-color:var(--cyan);color:var(--cyan)}
+
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);padding:12px 14px;border-radius:2px}
+.stat b{font-family:var(--mono);font-size:22px;font-weight:700;display:block;line-height:1.1}
+.stat span{font-size:9px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase}
+.stat em{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--dim);display:block;margin-top:3px}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:14px 16px}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+canvas.chart{width:100%;min-width:0;display:block;cursor:crosshair;background:var(--panel)}
+.legend{display:flex;gap:14px;font-size:10px;color:var(--dim);margin:2px 0 8px;font-family:var(--mono)}
+.legend i{display:inline-block;width:14px;height:2px;margin-right:5px;vertical-align:middle}
+
+/* factor detail */
+#fdetail .fhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+#fname{font-family:var(--mono);font-size:26px;font-weight:700;color:var(--cyan)}
+#ffam{font-size:10px;letter-spacing:.1em;color:var(--amber);border:1px solid var(--amber);
+  padding:3px 8px;border-radius:2px;background:rgba(251,191,36,.06)}
+#fformula{font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--bg);
+  border:1px solid var(--line);padding:8px 12px;border-radius:2px;margin:8px 0;
+  overflow-x:auto;white-space:nowrap}
+#fformula .src{color:var(--faint);margin-left:12px;white-space:nowrap}
+#fexpl{font-size:12.5px;line-height:1.9;color:var(--txt);background:var(--bg);
+  border-left:3px solid var(--cyan);padding:10px 14px;margin:0 0 12px;border-radius:0 2px 2px 0}
+#fexpl .verdict{color:var(--dim)}
+.fimg{display:flex;gap:12px;margin:0 0 14px;flex-wrap:wrap}
+.fimg figure{flex:0 1 340px;max-width:340px}
+.fimg img{width:100%;max-height:200px;object-fit:contain;border:1px solid var(--line);border-radius:2px;background:#fff}
+.fimg figcaption{font-size:9.5px;color:var(--faint);margin-top:4px;letter-spacing:.05em}
+.badge{font-size:9px;letter-spacing:.14em;padding:3px 8px;border-radius:2px;text-transform:uppercase;
+  display:inline-flex;align-items:center;gap:6px}
+.badge.ok{color:var(--cyan);border:1px solid var(--cyan);background:rgba(34,211,238,.08)}
+.badge.warn{color:var(--amber);border:1px solid var(--amber);background:rgba(251,191,36,.08)}
+.badge .q{width:12px;height:12px;font-size:8px}
+.fstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin-bottom:14px}
+.light{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:4px;vertical-align:1px}
+.fitem.miss{opacity:.45}
+#selfck{font-size:10px;color:var(--dim);padding:12px 4px 6px;border-top:1px solid var(--line);margin-top:20px;line-height:1.8}
+#selfck.bad{color:var(--amber);border-color:var(--amber)}
+.fstat{background:var(--bg);border:1px solid var(--line);padding:9px 10px;border-radius:2px;position:relative}
+.fstat b{font-family:var(--mono);font-size:15px;font-weight:600;display:block}
+.fstat span{font-size:8.5px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+.fstat .q{position:absolute;top:5px;right:5px}
+.hzrow{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+.hz{flex:1;min-width:90px;background:var(--bg);border:1px solid var(--line);border-radius:2px;padding:8px 10px}
+.hz .hl{font-size:8.5px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;display:flex;justify-content:space-between}
+.hz .hv{font-family:var(--mono);font-size:14px;font-weight:600;margin:3px 0 5px}
+.hz .bar{height:4px;background:var(--line);border-radius:2px;position:relative;overflow:hidden}
+.hz .bar i{position:absolute;top:0;bottom:0;border-radius:2px}
+
+/* combo lab */
+#combo .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;min-height:30px}
+.chip{font-family:var(--mono);font-size:11px;padding:5px 10px;border:1px solid var(--cyan);
+  border-radius:2px;color:var(--cyan);background:rgba(34,211,238,.07);cursor:pointer}
+.chip:hover{background:rgba(248,113,113,.12);border-color:var(--red);color:var(--red)}
+.chip .x{margin-left:6px}
+#combo .hint{font-size:10.5px;color:var(--dim);line-height:1.8}
+#combo .preset{background:var(--bg);border:1px solid var(--line);color:var(--dim);font-size:10px;
+  letter-spacing:.08em;padding:5px 10px;cursor:pointer;border-radius:2px;font-family:var(--sans)}
+#combo .preset:hover{color:var(--cyan);border-color:var(--cyan)}
+#combo .preset.on{color:var(--cyan);border-color:var(--cyan);background:rgba(34,211,238,.08)}
+
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px}
+th{font-size:9px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase;
+  text-align:right;padding:7px 10px;border-bottom:1px solid var(--line);user-select:none}
+th:first-child,td:first-child{text-align:left}
+td{padding:6px 10px;text-align:right;border-bottom:1px solid rgba(26,37,64,.5)}
+tbody tr{cursor:pointer;transition:background .15s}
+tbody tr:hover{background:rgba(34,211,238,.06)}
+.num{font-variant-numeric:tabular-nums}
+.tip{position:fixed;pointer-events:none;background:var(--panel2);border:1px solid var(--cyan);
+  padding:8px 12px;font-size:11px;border-radius:2px;z-index:100;display:none;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:340px;line-height:1.7}
+.tip b{color:var(--cyan)}
+footer{color:var(--faint);font-size:10px;letter-spacing:.06em;padding:8px 2px;line-height:1.8}
+@media (max-width:1100px){.strip{grid-template-columns:repeat(3,1fr)}.fstats{grid-template-columns:repeat(4,1fr)}.grid2{grid-template-columns:1fr}}
+@media (max-width:820px){aside{width:220px}.hstat:nth-of-type(n+3){display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="radar"><div class="ring"></div><div class="sweep"></div><div class="dot"></div></div>
+  <h1>ALPHA191<span class="sub">样本外检验 · 中证500 · 2017.07—2026.09</span></h1>
+  <div class="live"><i></i><span>OOS&nbsp;MONITOR</span></div>
+  <div class="hsep"></div>
+  <div class="hstat"><b id="h-sig">170</b><span>|t₅|&gt;2 因子</span></div>
+  <div class="hsep"></div>
+  <div class="hstat"><b id="h-icir">12</b><span>|ICIR₅|&gt;0.3</span></div>
+  <div class="hsep"></div>
+  <div class="hstat"><b id="h-ls">10</b><span>多空夏普&gt;1</span></div>
+</header>
+
+<div id="wrap">
+  <aside>
+    <div class="side-head">
+      <label>因子列表 · 191（点行查看，点 + 加入组合）</label>
+      <input id="search" placeholder="搜索 Alpha 编号…" autocomplete="off">
+      <div class="sortrow">
+        <button data-k="icir" class="on">|ICIR₅|</button>
+        <button data-k="ric">RankIC₅</button>
+        <button data-k="ls">多空夏普</button>
+        <button data-k="y5" title="近5年年化ICIR（周频口径）">近5年</button>
+        <button data-k="y1" title="近1年年化ICIR（周频口径）">近1年</button>
+      </div>
+    </div>
+    <div id="flist"></div>
+  </aside>
+
+  <main>
+    <section>
+      <div class="stitle">总体概况</div>
+      <div class="strip">
+        <div class="stat"><b>191</b><span>因子总数</span><em>报告公式忠实实现</em></div>
+        <div class="stat"><b style="color:var(--cyan)">170</b><span>|t₅| &gt; 2</span><em>占比 89.0%，157 个 |t₅|&gt;3</em></div>
+        <div class="stat"><b>-0.005</b><span>RankIC₅ 均值</span><em>方向整体偏负 · 53% 因子为负</em></div>
+        <div class="stat"><b>0.018</b><span>|RankIC₅| 均值</span><em>不足样本内一半</em></div>
+        <div class="stat"><b>31%</b><span>|corr|&lt;0.1 占比</span><em>样本内为 94%，相关性上升</em></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="stitle">分年度衰减 · 全因子均值 <span class="q" data-tip="每一年里，把191个因子的|RankIC₅|取平均（青色柱），衡量因子体系整体选股能力的强弱变化；黄色柱为带方向的均值，反映整体方向偏正还是偏负。2016年为研报发表前的参照。"></span></div>
+      <div class="panel">
+        <div class="legend"><span><i style="background:var(--cyan)"></i>|RankIC₅| 均值</span><span><i style="background:var(--amber)"></i>RankIC₅ 均值（带方向）</span></div>
+        <canvas class="chart" id="ov-year" height="130"></canvas>
+      </div>
+    </section>
+
+    <section>
+      <div class="grid2">
+        <div class="panel">
+          <div class="stitle">ICIR₅ 分布 <span class="q" data-tip="ICIR₅ = RankIC₅的均值÷标准差，衡量因子效果的稳定性（类似夏普比率）。|ICIR|&gt;0.3可视为稳定有效。大部分因子落在±0.2以内：显著但不强。"></span></div>
+          <canvas class="chart" id="ov-hist" height="120"></canvas>
+        </div>
+        <div class="panel">
+          <div class="stitle">样本外 Top 15 · 按 |ICIR₅|</div>
+          <table id="toptab"><thead><tr>
+            <th>因子</th><th>RankIC₅</th><th>ICIR₅</th><th>中性ICIR₅</th><th>多空年化</th><th>夏普</th>
+          </tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section id="fdetail">
+      <div class="stitle">因子详情</div>
+      <div class="panel">
+        <div class="fhead">
+          <span id="fname">Alpha83</span>
+          <span id="ffam"></span>
+          <span class="badge ok" id="fbadge">样本外有效 <span class="q" id="fbadgeq"></span></span>
+        </div>
+        <div id="fformula"></div>
+        <div id="fexpl"></div>
+        <div class="fimg" id="fimg"></div>
+        <div class="fstats" id="fstats"></div>
+        <div class="stitle">多周期 RankIC <span class="q" data-tip="同一因子用不同的未来持有期（1/2/3/5/10日）分别计算RankIC。短周期价量因子通常持有期越短IC越高；若IC随周期拉长快速衰减，说明信号只能用于短持有。"></span></div>
+        <div class="hzrow" id="hzrow"></div>
+        <div class="grid2">
+          <div>
+            <div class="stitle">累计 RankIC₅（周频）<span class="q" data-tip="把每个交易日的RankIC₅逐日累加（图上按周抽样）。这是最直观的有效性图：曲线稳定向右上爬升 = 因子持续有效；走平 = 失效；稳定下降 = 方向反了，但反过来用依然有效。抖动越小说明越稳定。"></span></div>
+            <canvas class="chart" id="f-ic" height="120"></canvas>
+          </div>
+          <div>
+            <div class="stitle">十分位多空净值 · 5日调仓 <span class="q" data-tip="每天把成分股按因子值排成10组，做多最高组、做空最低组，每5个交易日重排一次（非重叠）。净值持续上升 = 因子能稳定区分好股票和差股票。毛收益，未扣交易费。"></span></div>
+            <canvas class="chart" id="f-ls" height="120"></canvas>
+          </div>
+        </div>
+        <div style="height:14px"></div>
+        <div class="grid2">
+          <div>
+            <div class="stitle">分年度 RankIC₅ <span class="q" data-tip="该因子每一年的RankIC₅均值。红（正）= 与研报同向有效；绿（负）= 方向相反。用来回答：这个因子是哪几年有效、有没有衰减、有没有翻身。2016年为研报发表前参照。"></span></div>
+            <canvas class="chart" id="f-year" height="100"></canvas>
+          </div>
+          <div>
+            <div class="stitle">边际趋势 · 滚动1年ICIR <span class="q" data-tip="每个时点用过去52周（约1年）的周频RankIC₅计算年化ICIR，连成曲线。比年度柱更细：能看到因子在年内什么时候转强/转弱。曲线上穿0=边际转正、持续下行=边际恶化、冲高=近期走强。"></span></div>
+            <canvas class="chart" id="f-roll" height="100"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="combo">
+      <div class="stitle">组合实验室 · 等权多因子多空组合 <span class="q" data-tip="在左侧列表点「+」把因子加进来（最多8个），这里把每个因子的十分位多空策略按等权组合成一个“策略组合”，看组合后的净值、夏普是否超过单个因子。反向因子（徽章“样本外有效·反向”）加入后自动翻转买卖方向再平均——这正是实际使用的正确方式。两个窗口各司其职：「选股窗口」决定预设按钮按哪段表现挑成员，「评价窗口」决定组合在哪个区间统计——两者都显式可见，点击顺序不影响最终结果。注意：这是“策略层”组合；真正的“信号层”合成（因子值标准化后加权再选股）需要用代码包重算。"></span></div>
+      <div class="panel">
+        <div class="chips" id="chips"><span class="hint" id="chips-hint">尚未选择因子。点击左侧列表每行右侧的「+」加入，或：</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="preset" id="pr-pv">量价相关 Top5</button>
+          <button class="preset" id="pr-ls">多空夏普 Top5</button>
+          <button class="preset" id="pr-mix">低相关混合 6</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:10px;color:var(--dim);letter-spacing:.12em">选股窗口</span>
+          <button class="preset swin" data-w="0">全样本</button>
+          <button class="preset swin" data-w="252">近5年</button>
+          <button class="preset swin on" data-w="151">近3年</button>
+          <button class="preset swin" data-w="50">近1年</button>
+          <span class="q" data-tip="按哪段时间的表现来挑成员（回答“谁入选”）：比如按近3年夏普挑Top5，就是选“过去3年表现最稳的5个”。预设按钮选中状态下切换此窗口，成员会自动重选。手动加减成员后预设高亮取消，此窗口不再影响已选成员。"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:10px;color:var(--dim);letter-spacing:.12em">评价窗口</span>
+          <button class="preset cwin on" data-w="0">全样本</button>
+          <button class="preset cwin" data-w="252">近5年</button>
+          <button class="preset cwin" data-w="151">近3年</button>
+          <button class="preset cwin" data-w="50">近1年</button>
+          <span class="q" data-tip="挑好成员后，在哪个区间考核这个组合的成绩（回答“成绩怎么算”）：净值、年化、夏普、回撤都按此区间重算。只改统计口径，不改成员。"></span>
+        </div>
+        <div class="grid2">
+          <div>
+            <div class="stitle">组合净值 vs 成员</div>
+            <canvas class="chart" id="c-nav" height="150"></canvas>
+          </div>
+          <div>
+            <div class="stitle">组合统计</div>
+            <table id="ctab"><thead><tr><th></th><th>年化</th><th>夏普</th><th>回撤</th><th>胜率</th></tr></thead><tbody></tbody></table>
+            <div class="hint" id="cverdict" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      复现对象：国泰君安《数量化专题之九十三：基于短周期价量特征的多因子选股体系》（2017-06-15）· near replication<br>
+      口径：PIT 成分掩码（月度）· 前复权 · t 收盘 → t+h 收盘前瞻 · 行业中性化（规模因子待补）· 多空为毛收益未扣费<br>
+      因子释义中带「研报」字样的内容出自原报告；示意图中标注“原报告图”的为报告原图，其余为复现绘制。本看板为研究证据展示，不构成投资建议。
+      <div id="selfck">数据自检中…</div>
+    </footer>
+  </main>
+</div>
+<div class="tip" id="tip"></div>
+<script src="data.js"></script>
+<script>
+const CN_POS='#f87171', CN_NEG='#34d399', CYAN='#22d3ee', AMBER='#fbbf24', DIM='#7a8aa8', LINE='#1a2540', FAINT='#4a5a78', PANEL='#0c1220';
+const F = DATA.factors, WD = DATA.weeklyDates, LD = DATA.lsDates, YRS = DATA.years, CORR = DATA.corr;
+let cur = null, sortK = 'icir', combo = [], cwin = 0, swin = 151, lastPreset = null;
+/* ---- 分段指标（周频IC增量口径）与对齐净值缓存 ---- */
+function wic(f){const c=f.cum5,out=[];for(let i=1;i<c.length;i++)out.push(c[i]-c[i-1]);return out}
+function segICIRw(f,n){const w=wic(f),sg=n?w.slice(-n):w;
+  const m=sg.reduce((a,b)=>a+b,0)/sg.length;
+  const sd=Math.sqrt(sg.reduce((a,b)=>a+(b-m)*(b-m),0)/sg.length);
+  return sd>0?m/sd*Math.sqrt(52):0}
+function rollICIR(f,win=52){const w=wic(f),out=[];
+  for(let i=0;i<w.length;i++){
+    if(i<win-1){out.push(null);continue}
+    const sg=w.slice(i-win+1,i+1), m=sg.reduce((a,b)=>a+b,0)/win;
+    const sd=Math.sqrt(sg.reduce((a,b)=>a+(b-m)*(b-m),0)/win);
+    out.push(sd>0?m/sd*Math.sqrt(52):0)}
+  return out}
+const safe=v=>(typeof v==='number'&&isFinite(v))?v:-1e9;   // 排序兜底：空值一律垫底
+const isMiss=f=>!isFinite(f.icir5);                        // 数据缺口判定（Alpha138）
+F.forEach(f=>{
+  f.icirY5=segICIRw(f,260);f.icirY1=segICIRw(f,52);f.icir3M=segICIRw(f,13);
+  const dir=f.icir5>=0?1:-1,v=f.icir3M*dir;
+  f.light=v>=1.5?['改善',CN_POS,'pos']:v<=-0.5?['恶化',CN_NEG,'neg']:['持平','#8b93a8','zero'];
+  // 方向对齐后的多空净值（反向因子翻转），供组合与窗口统计复用
+  const sgn=f.icir5<0?-1:1,nav=[1];
+  for(let i=1;i<LD.length;i++)nav.push(nav[i-1]*(1+sgn*(f.lsnav[i]/f.lsnav[i-1]-1)));
+  f.anav=nav;
+});
+
+/* ---------- metric / badge / chart 解释文案 ---------- */
+const TIPS = {
+ ric1:'<b>RankIC₁</b>：每天把全部成分股按因子值排序，再按“未来1日收益”排序，两个排序的Spearman相关系数，取全期平均。&gt;0说明因子值越大未来越涨；|0.02|以上有实际意义。',
+ ric5:'<b>RankIC₅</b>：同上，但看未来5日收益。是衡量因子“灵不灵”的核心指标，也是本看板默认口径。',
+ icir5:'<b>ICIR₅</b> = RankIC₅均值 ÷ 其日度波动。衡量稳定性：偶尔蒙对不算本事，天天对一点才是。|0.3|以上视为稳定有效，越高越可靠。',
+ t5:'<b>t₅</b> = ICIR₅ × √交易日数，统计显著性检验。|t|&gt;2 表示“有效”这件事在统计上不是巧合。',
+ neu5:'<b>中性ICIR₅</b>：先把因子值对行业哑变量回归、取残差，再算ICIR。剔除“靠押行业赚钱”的成分后仍然高，说明 alpha 来自个股选择而非行业轮动。',
+ lsRet:'<b>多空年化</b>：按因子值把股票分10组，做多最高组、做空最低组（5日调仓、等权、未扣费）的年化收益。',
+ lsShp:'<b>多空夏普</b>：多空收益均值÷波动×√年。&gt;1 为优秀。未扣费时需打折看待。',
+ lsMdd:'<b>最大回撤</b>：多空净值从历史高点跌下来的最大幅度，衡量最惨的时候有多惨。',
+ lsWin:'<b>胜率</b>：调仓周期里多空收益为正的比例。55%以上且盈亏比均衡为佳。',
+};
+Object.assign(TIPS,{
+ icirY5:'<b>近5年ICIR</b>：用最近5年（约260周）的周频RankIC₅计算的年化ICIR（均值÷标准差×√52）。比全样本口径更能反映因子“最近几年”的状态。|值|>1 可视为近年稳定有效。与ICIR₅（日频口径）量纲不同，不要直接比大小。',
+ icirY1:'<b>近1年ICIR</b>：最近1年（52周）的周频年化ICIR。用于边际确认——全样本强但近1年转弱的因子，可能在“吃老本”。',
+ m3:'<b>近3月趋势灯</b>：最近13周因子IC按方向对齐后的年化ICIR。≥1.5 改善（红），≤-0.5 恶化（绿），其间为持平。短窗口噪声大，只作预警，不作排名依据。'
+});
+const BADGE_TIPS = {
+ miss:'<b>数据缺口</b>：该因子公式嵌套窗口过深，多空收益与汇总指标未在流水线中算出（周频IC序列存在）。已从所有排名垫底排除，且不可加入组合——这不是"不显著"，是"没算出来"。',
+ ok:'<b>样本外有效</b>：|ICIR₅|≥0.3，且方向与原研报一致（正IC）。',
+ rev:'<b>样本外有效·反向</b>：|ICIR₅|≥0.3，但方向与原研报相反（负IC）——不是失效，而是市场结构变了；把因子倒过来用即为有效因子。',
+ weak:'<b>显著但较弱</b>：|t₅|&gt;2，统计上不是巧合，但 |ICIR₅|&lt;0.3，强度和稳定性不足以单独使用，可作为合成配料。',
+ no:'<b>不显著</b>：|t₅|≤2，样本外无法拒绝“无预测力”的假设。',
+};
+
+/* ---------- canvas helpers ---------- */
+function setup(cv){
+  const dpr=window.devicePixelRatio||1;
+  cv.width=0; cv.height=0;  // 清零内置尺寸，防止 min-content 参与排版导致逐次放大
+  const r=cv.getBoundingClientRect();
+  const H=+cv.getAttribute('height')||190;
+  if(r.width<10) return null;
+  cv.width=r.width*dpr; cv.height=H*dpr; cv.style.height=H+'px';
+  const c=cv.getContext('2d'); c.setTransform(dpr,0,0,dpr,0,0);
+  c.fillStyle=PANEL; c.fillRect(0,0,r.width,H);
+  return {c, W:r.width, H};
+}
+function fmtDate(s){ return '20'+s.slice(0,2)+'-'+s.slice(2,4); }
+function lineChart(cv, dates, vals, color, opts={}){
+  const g=setup(cv); if(!g) return; const {c,W,H}=g;
+  const padL=44,padR=10,padT=12,padB=22, w=W-padL-padR, h=H-padT-padB;
+  let mn=Math.min(...vals), mx=Math.max(...vals);
+  if(mx-mn<1e-9){mx=mn+1}
+  const pad=(mx-mn)*.08; mn-=pad; mx+=pad;
+  const X=i=>padL+w*i/(vals.length-1), Y=v=>padT+h*(1-(v-mn)/(mx-mn));
+  c.strokeStyle=LINE; c.fillStyle=FAINT; c.font='9px JetBrains Mono'; c.textAlign='right';
+  for(let gg=0;gg<=4;gg++){const v=mn+(mx-mn)*gg/4,y=Y(v);
+    c.beginPath();c.moveTo(padL,y);c.lineTo(W-padR,y);c.stroke();
+    c.fillText(v.toFixed(opts.dec??2),padL-6,y+3);}
+  const n=dates.length; c.textAlign='center';
+  [0,.25,.5,.75,1].forEach(f=>{const i=Math.round(f*(n-1));
+    c.fillText(fmtDate(dates[i]),X(i),H-6);});
+  const refYs=(mn<0&&mx>0)?[0]:[];
+  if(opts.refY!=null&&mn<opts.refY&&mx>opts.refY)refYs.push(opts.refY);
+  refYs.forEach(rv=>{c.strokeStyle='rgba(122,138,168,.5)';c.setLineDash([3,3]);
+    c.beginPath();c.moveTo(padL,Y(rv));c.lineTo(W-padR,Y(rv));c.stroke();c.setLineDash([]);});
+  c.strokeStyle=color;c.lineWidth=1.6;c.beginPath();
+  vals.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v))});
+  c.stroke();c.lineWidth=1;
+  cv._chart={X,Y,vals,dates,padL,padR,W,H};
+}
+function multiLine(cv, dates, series){
+  const g=setup(cv); if(!g) return; const {c,W,H}=g;
+  const padL=44,padR=10,padT=12,padB=22, w=W-padL-padR, h=H-padT-padB;
+  const all=series.flatMap(s=>s.vals);
+  let mn=Math.min(...all), mx=Math.max(...all);
+  const pad=(mx-mn)*.08; mn-=pad; mx+=pad;
+  const X=i=>padL+w*i/(series[0].vals.length-1), Y=v=>padT+h*(1-(v-mn)/(mx-mn));
+  c.strokeStyle=LINE; c.fillStyle=FAINT; c.font='9px JetBrains Mono'; c.textAlign='right';
+  for(let gg=0;gg<=4;gg++){const v=mn+(mx-mn)*gg/4,y=Y(v);
+    c.beginPath();c.moveTo(padL,y);c.lineTo(W-padR,y);c.stroke();c.fillText(v.toFixed(2),padL-6,y+3);}
+  c.textAlign='center'; const n=dates.length;
+  [0,.25,.5,.75,1].forEach(f=>c.fillText(fmtDate(dates[Math.round(f*(n-1))]),X(Math.round(f*(n-1))),H-6));
+  series.forEach(s=>{
+    c.strokeStyle=s.color;c.lineWidth=s.main?2:0.9;c.globalAlpha=s.main?1:0.55;c.beginPath();
+    s.vals.forEach((v,i)=>{i?c.lineTo(X(i),Y(v)):c.moveTo(X(i),Y(v))});
+    c.stroke();c.globalAlpha=1;c.lineWidth=1;});
+  cv._chart={X,Y,vals:series[0].vals,dates,padL,padR,W,H};
+}
+function barChart(cv, labels, series, opts={}){
+  const g=setup(cv); if(!g) return; const {c,W,H}=g;
+  const padL=44,padR=10,padT=12,padB=22, w=W-padL-padR, h=H-padT-padB;
+  const all=series.flatMap(s=>s.vals.filter(v=>v!=null));
+  let mn=Math.min(...all,0),mx=Math.max(...all,0);
+  const pad=(mx-mn)*.08||1;mn-=pad;mx+=pad;
+  const n=labels.length,bw=w/n, Y=v=>padT+h*(1-(v-mn)/(mx-mn));
+  c.strokeStyle=LINE;c.fillStyle=FAINT;c.font='9px JetBrains Mono';c.textAlign='right';
+  for(let gg=0;gg<=4;gg++){const v=mn+(mx-mn)*gg/4,y=Y(v);
+    c.beginPath();c.moveTo(padL,y);c.lineTo(W-padR,y);c.stroke();
+    c.fillText(v.toFixed(opts.dec??3),padL-6,y+3);}
+  c.textAlign='center';
+  labels.forEach((lb,i)=>c.fillText(lb,padL+bw*(i+.5),H-6));
+  series.forEach((s,si)=>{
+    s.vals.forEach((v,i)=>{
+      if(v==null)return;
+      const n2=series.length, sub=bw*.62/n2;
+      const x=padL+bw*i+bw*.19+sub*si;
+      c.fillStyle=s.colorBySign?(v>=0?CN_POS:CN_NEG):s.color;
+      const y0=Y(Math.max(0,v)),y1=Y(Math.min(0,v));
+      c.fillRect(x,y0,Math.max(2,sub-2),Math.max(1,y1-y0));
+    });
+  });
+  if(mn<0&&mx>0){c.strokeStyle='rgba(122,138,168,.5)';c.beginPath();
+    c.moveTo(padL,Y(0));c.lineTo(W-padR,Y(0));c.stroke();}
+}
+function histChart(cv, vals){
+  const g=setup(cv); if(!g) return; const {c,W,H}=g;
+  const bins=new Array(16).fill(0), lo=-0.5, hi=0.5, bw=(hi-lo)/16;
+  vals.forEach(v=>{const b=Math.min(15,Math.max(0,Math.floor((v-lo)/bw)));bins[b]++});
+  const padL=34,padR=10,padT=12,padB=22, w=W-padL-padR,h=H-padT-padB,mx=Math.max(...bins)*1.1, bwpx=w/16;
+  c.fillStyle=FAINT;c.font='9px JetBrains Mono';c.textAlign='right';
+  for(let gg=0;gg<=3;gg++){const v=mx*gg/3,y=padT+h*(1-gg/3);
+    c.strokeStyle=LINE;c.beginPath();c.moveTo(padL,y);c.lineTo(W-padR,y);c.stroke();
+    c.fillText(Math.round(mx*gg/3),padL-5,y+3);}
+  bins.forEach((b,i)=>{
+    const x=padL+bwpx*i+bwpx*.12,yv=padT+h*(1-b/mx);
+    c.fillStyle=Math.abs(lo+bw*(i+.5))>0.3?CYAN:'rgba(34,211,238,.35)';
+    c.fillRect(x,yv,bwpx*.76,h-(yv-padT));});
+  c.fillStyle=FAINT;c.textAlign='center';
+  bins.forEach((_,i)=>{if(i%3===0)c.fillText((lo+bw*(i+.5)).toFixed(1),padL+bwpx*(i+.5),H-6)});
+}
+
+/* ---------- overview ---------- */
+function renderOverview(){
+  const yAbs=YRS.map((_,i)=>{const a=F.map(f=>f.yearly[i]).filter(v=>v!=null);
+    return a.reduce((x,y)=>x+Math.abs(y),0)/a.length});
+  const ySgn=YRS.map((_,i)=>{const a=F.map(f=>f.yearly[i]).filter(v=>v!=null);
+    return a.reduce((x,y)=>x+y,0)/a.length});
+  barChart(document.getElementById('ov-year'),YRS,[
+    {vals:yAbs,color:CYAN},{vals:ySgn,color:AMBER}]);
+  histChart(document.getElementById('ov-hist'),F.map(f=>f.icir5));
+  const top=[...F].filter(f=>isFinite(f.icir5)).sort((a,b)=>Math.abs(b.icir5)-Math.abs(a.icir5)).slice(0,15);
+  document.querySelector('#toptab tbody').innerHTML=top.map(f=>
+    `<tr data-id="${f.id}"><td>${f.name}</td>
+     <td class="num ${f.ric5>=0?'pos':'neg'}">${f.ric5.toFixed(3)}</td>
+     <td class="num ${f.icir5>=0?'pos':'neg'}">${f.icir5.toFixed(3)}</td>
+     <td class="num ${f.neu5>=0?'pos':'neg'}">${f.neu5.toFixed(3)}</td>
+     <td class="num ${f.lsRet>=0?'pos':'neg'}">${(f.lsRet*100).toFixed(1)}%</td>
+     <td class="num">${f.lsShp.toFixed(2)}</td></tr>`).join('');
+  document.querySelectorAll('#toptab tbody tr').forEach(tr=>
+    tr.onclick=()=>{selectFactor(+tr.dataset.id);
+      document.getElementById('fdetail').scrollIntoView({behavior:'smooth'});});
+}
+
+/* ---------- sidebar ---------- */
+function renderList(){
+  const q=(document.getElementById('search').value||'').replace(/\D/g,'');
+  let arr=[...F];
+  if(q)arr=arr.filter(f=>String(f.id).includes(q));
+  arr.sort((a,b)=>sortK==='icir'?safe(Math.abs(b.icir5))-safe(Math.abs(a.icir5))
+    :sortK==='ric'?safe(Math.abs(b.ric5))-safe(Math.abs(a.ric5))
+    :sortK==='y5'?safe(Math.abs(b.icirY5))-safe(Math.abs(a.icirY5))
+    :sortK==='y1'?safe(Math.abs(b.icirY1))-safe(Math.abs(a.icirY1))
+    :safe(Math.abs(b.lsShp))-safe(Math.abs(a.lsShp)));
+  document.getElementById('flist').innerHTML=arr.map(f=>{
+    if(isMiss(f))return `<div class="fitem miss${cur&&cur.id===f.id?' on':''}" data-id="${f.id}">
+      <span class="fn">${f.name}<i class="light" style="background:#3a445c" title="数据缺口：指标未算出"></i></span>
+      <span class="fv zero">—</span>
+      <span class="fi" style="color:var(--amber)" title="数据缺口：多空序列与汇总指标缺失，已垫底且不可入组合">缺</span>
+      <span class="add" style="opacity:.25;cursor:not-allowed" title="数据缺口，不可加入组合">+</span>
+    </div>`;
+    const iv=sortK==='y5'?f.icirY5:sortK==='y1'?f.icirY1:f.icir5;
+    const th=(sortK==='y5'||sortK==='y1')?1:0.3;
+    return `<div class="fitem${cur&&cur.id===f.id?' on':''}" data-id="${f.id}">
+      <span class="fn">${f.name}<i class="light" style="background:${f.light[1]}" title="近3月趋势：${f.light[0]}"></i></span>
+      <span class="fv ${f.ric5>=0?'pos':'neg'}">${f.ric5>=0?'+':''}${f.ric5.toFixed(3)}</span>
+      <span class="fi ${Math.abs(iv)>=th?'pos':'zero'}">${iv.toFixed(2)}</span>
+      <span class="add${combo.includes(f.id)?' in':''}" data-add="${f.id}">${combo.includes(f.id)?'−':'+'}</span>
+    </div>`}).join('');
+  document.querySelectorAll('.fitem').forEach(el=>
+    el.onclick=e=>{
+      const addId=e.target.dataset.add;
+      if(addId){e.stopPropagation();toggleCombo(+addId);return}
+      selectFactor(+el.dataset.id);});
+}
+document.getElementById('search').addEventListener('input',renderList);
+document.querySelectorAll('.sortrow button').forEach(b=>b.onclick=()=>{
+  sortK=b.dataset.k;
+  document.querySelectorAll('.sortrow button').forEach(x=>x.classList.toggle('on',x===b));
+  renderList();});
+
+/* ---------- factor detail ---------- */
+const IMG_MAP={
+ beili:[['img/fig_beili_concept.jpg','原报告图1 · 价量背离示意：价跌量增/价涨量减'],['img/fig_beili_ret.jpg','原报告图2 · 价量背离因子样本内累计因子收益率']],
+ gap:[['img/fig_gap_concept.jpg','原报告图3 · 开盘缺口示意'],['img/fig_gap_ret.jpg','原报告图4 · 开盘缺口因子样本内累计因子收益率']],
+ volx:[['img/fig_vol_concept.jpg','原报告图5 · 异常成交量示意'],['img/fig_vol_ret.jpg','原报告图6 · 异常成交量因子样本内累计因子收益率']],
+ lfbl:[['img/fig_lfbl_concept.jpg','原报告图7 · 量幅背离示意：振幅与成交量背离'],['img/fig_lfbl_ret.jpg','原报告图8 · 量幅背离因子样本内累计因子收益率（报告样本内稳定性最强）']],
+ mom:[['img/sch_mom.png','示意图（复现绘制）· 动量/反转：近期涨跌的外推或回归']],
+ vol:[['img/sch_vol.png','示意图（复现绘制）· 波动率：路径平稳程度']],
+ pos:[['img/sch_pos.png','示意图（复现绘制）· 位置/极值：当前价量在N日区间中的位置']],
+ vwap:[['img/sch_vwap.png','示意图（复现绘制）· VWAP偏离：收盘相对均价的强弱']],
+ bench:[['img/sch_bench.png','示意图（复现绘制）· 基准/风格：剥离市场后的特质部分']],
+};
+function selectFactor(id){
+  cur=F.find(f=>f.id===id);
+  renderList();
+  document.getElementById('fname').textContent=cur.name;
+  document.getElementById('ffam').textContent=cur.fam;
+  const fm=DATA.formulas['Alpha'+id];
+  document.getElementById('fformula').innerHTML=
+    (fm?fm[0]:'(公式文档缺失)')+(fm?`<span class="src">来源：${fm[1]}</span>`:'');
+  // 释义 + 动态样本外结论
+  const sameDir = cur.ric5>0;
+  const v=isMiss(cur)?`<br><span class="verdict" style="color:var(--amber)">▸ 数据缺口：该因子汇总指标未算出（公式窗口嵌套过深），已从排名垫底排除，不可加入组合。</span>`
+  :`<br><span class="verdict">▸ 样本外（2017.07—2026.09，中证500）：RankIC₅=${cur.ric5>=0?'+':''}${cur.ric5}（t=${cur.t5}），`
+    +`${sameDir?'方向与研报一致':'方向与研报相反'}；行业中性化后 ICIR₅=${cur.neu5}；`
+    +`十分位多空年化 ${(cur.lsRet*100).toFixed(1)}%（夏普 ${cur.lsShp}）。</span>`;
+  document.getElementById('fexpl').innerHTML=cur.expl+v;
+  // 配图
+  document.getElementById('fimg').innerHTML=(IMG_MAP[cur.img]||[]).map(([src,cap])=>
+    `<figure><img src="${src}" loading="lazy"><figcaption>${cap}</figcaption></figure>`).join('');
+  // badge
+  const eff=Math.abs(cur.icir5)>=0.3, b=document.getElementById('fbadge');
+  let key;
+  if(isMiss(cur)){b.textContent='数据缺口 ';key='miss';b.className='badge warn'}
+  else if(eff&&cur.icir5>0){b.textContent='样本外有效 ';key='ok';b.className='badge ok'}
+  else if(eff){b.textContent='样本外有效 · 反向 ';key='rev';b.className='badge ok'}
+  else if(Math.abs(cur.t5)>2){b.textContent='显著但较弱 ';key='weak';b.className='badge warn'}
+  else{b.textContent='不显著 ';key='no';b.className='badge warn'}
+  const q=document.createElement('span');q.className='q';q.textContent='?';q.dataset.tip=BADGE_TIPS[key];
+  b.appendChild(q);
+  // 指标格（带?）
+  const st=(k,v,cls,tip)=>`<div class="fstat"><span class="q" data-tip="${tip||''}">?</span><b class="${cls||''}">${v}</b><span>${k}</span></div>`;
+  const sgn=x=>isFinite(x)?(x>=0?'pos':'neg'):'';
+  const F4=v=>isFinite(v)?v.toFixed(4):'—', F3=v=>isFinite(v)?v.toFixed(3):'—',
+        F1=v=>isFinite(v)?v.toFixed(1):'—', FP=v=>isFinite(v)?(v*100).toFixed(1)+'%':'—';
+  document.getElementById('fstats').innerHTML=
+    st('RankIC₁',F4(cur.ric1),sgn(cur.ric1),TIPS.ric1)+
+    st('RankIC₅',F4(cur.ric5),sgn(cur.ric5),TIPS.ric5)+
+    st('ICIR₅',F3(cur.icir5),sgn(cur.icir5),TIPS.icir5)+
+    st('t₅',F1(cur.t5),'',TIPS.t5)+
+    st('中性ICIR₅',F3(cur.neu5),sgn(cur.neu5),TIPS.neu5)+
+    st('多空年化',FP(cur.lsRet),sgn(cur.lsRet),TIPS.lsRet)+
+    st('多空夏普',isFinite(cur.lsShp)?cur.lsShp.toFixed(2):'—',sgn(cur.lsShp),TIPS.lsShp)+
+    st('最大回撤',FP(cur.lsMdd),'',TIPS.lsMdd)+
+    st('近5年ICIR',isFinite(cur.icirY5)?cur.icirY5.toFixed(2):'—',sgn(cur.icirY5),TIPS.icirY5)+
+    st('近1年ICIR',isFinite(cur.icirY1)?cur.icirY1.toFixed(2):'—',sgn(cur.icirY1),TIPS.icirY1)+
+    st('近3月',cur.light[0],cur.light[2],TIPS.m3);
+  // 多周期
+  const hz=[['1日',cur.ric1],['2日',cur.ric2],['3日',cur.ric3],['5日',cur.ric5],['10日',cur.ric10]];
+  const mx=Math.max(...hz.map(x=>isFinite(x[1])?Math.abs(x[1]):0),0.01);
+  document.getElementById('hzrow').innerHTML=hz.map(([l,val])=>{
+    const pc=Math.abs(val)/mx*100;
+    if(!isFinite(val))return `<div class="hz"><div class="hl"><span>未来${l}</span></div>
+      <div class="hv">—</div><div class="bar"></div></div>`;
+    return `<div class="hz"><div class="hl"><span>未来${l}</span></div>
+      <div class="hv ${val>=0?'pos':'neg'}">${val>=0?'+':''}${val.toFixed(4)}</div>
+      <div class="bar"><i style="width:${pc}%;left:${val>=0?'50%':(50-pc/2)+'%'};background:${val>=0?CN_POS:CN_NEG}"></i></div></div>`;
+  }).join('');
+  lineChart(document.getElementById('f-ic'),WD,cur.cum5,
+    cur.cum5[cur.cum5.length-1]>=0?CN_POS:CN_NEG,{dec:2});
+  if(cur.lsnav.every(v=>!isFinite(v))){
+    const g=setup(document.getElementById('f-ls'));
+    if(g){g.c.fillStyle=FAINT;g.c.font='11px JetBrains Mono';g.c.fillText('多空序列缺失（数据缺口）',30,60)}
+  }else lineChart(document.getElementById('f-ls'),LD,cur.lsnav,CYAN,{dec:2,refY:1});
+  barChart(document.getElementById('f-year'),YRS,[{vals:cur.yearly.map(v=>isFinite(v)?v:0),colorBySign:1}]);
+  // 滚动1年ICIR（去掉前52周空窗）
+  const ri=rollICIR(cur).slice(52), rw=WD.slice(53);
+  lineChart(document.getElementById('f-roll'),rw,ri,
+    ri[ri.length-1]>=0?CN_POS:CN_NEG,{dec:2,refY:0});
+}
+
+/* ---------- combo lab ---------- */
+function stats(nav){
+  const n=nav.length, yrs=n/50.5;  // 约每5日一个调仓点
+  const ann=Math.pow(nav[n-1]/nav[0],1/yrs)-1;
+  const rets=[];for(let i=1;i<n;i++)rets.push(nav[i]/nav[i-1]-1);
+  const m=rets.reduce((a,b)=>a+b,0)/rets.length;
+  const sd=Math.sqrt(rets.reduce((a,b)=>a+(b-m)*(b-m),0)/rets.length);
+  const shp=sd>0?m/sd*Math.sqrt(50.5):0;
+  let peak=nav[0],mdd=0;nav.forEach(v=>{peak=Math.max(peak,v);mdd=Math.min(mdd,v/peak-1)});
+  const win=rets.filter(r=>r>0).length/rets.length;
+  return {ann,shp,mdd,win};
+}
+function markPreset(name){lastPreset=name;
+  ['pr-pv','pr-ls','pr-mix'].forEach(i=>document.getElementById(i).classList.toggle('on',i==='pr-'+name));}
+function toggleCombo(id){
+  markPreset(null);  // 手动增删后，组合不再等于任何预设，取消高亮
+  const f0=F.find(x=>x.id===id);
+  if(f0&&isMiss(f0))return;  // 数据缺口因子不可入组合
+  if(combo.includes(id))combo=combo.filter(x=>x!==id);
+  else if(combo.length<8)combo.push(id);
+  renderList();renderCombo();
+}
+function renderCombo(){
+  const chips=document.getElementById('chips');
+  document.getElementById('chips-hint')?.remove();
+  chips.innerHTML=combo.map(id=>{const f=F.find(x=>x.id===id);const rev=f&&f.icir5<0;
+    return `<span class="chip" data-id="${id}">${'Alpha'+id}${rev?'<span style="color:var(--amber);font-size:9px;margin-left:2px" title="反向因子，已自动翻转方向">反</span>':''}<span class="x">×</span></span>`}).join('')
+    ||'<span class="hint">尚未选择因子。点击左侧列表每行右侧的「+」加入，或用上方预设。</span>';
+  chips.querySelectorAll('.chip').forEach(c=>c.onclick=()=>toggleCombo(+c.dataset.id));
+  const cv=document.getElementById('c-nav'), tb=document.querySelector('#ctab tbody'), vd=document.getElementById('cverdict');
+  if(combo.length<2){
+    const g=setup(cv); if(g){g.c.fillStyle=FAINT;g.c.font='11px JetBrains Mono';
+      g.c.fillText('选择 2 个以上因子后显示组合净值', 30, 100);}
+    tb.innerHTML='';vd.innerHTML='';return;
+  }
+  const mem=combo.map(id=>F.find(f=>f.id===id));
+  // 方向对齐：反向因子（徽章“样本外有效·反向”）入组合前自动翻转买卖方向（anav 已在加载时算好）
+  const sl=cwin>0?cwin:0, LDv=sl?LD.slice(-sl):LD, n=LDv.length;
+  const aligned=mem.map(f=>{
+    const nav=sl?f.anav.slice(-sl):f.anav;
+    return {f,sgn:f.icir5<0?-1:1,nav,st:stats(nav)};
+  });
+  const cnav=[1];
+  for(let i=1;i<n;i++){
+    let r=0;aligned.forEach(a=>r+=a.nav[i]/a.nav[i-1]-1);r/=aligned.length;
+    cnav.push(cnav[i-1]*(1+r));
+  }
+  const colors=[CYAN,AMBER,CN_POS,CN_NEG,'#a78bfa','#f472b6','#94a3b8','#facc15'];
+  multiLine(cv,LDv,[{vals:cnav,color:CYAN,main:1},
+    ...aligned.map((a,i)=>({vals:a.nav,color:colors[(i+1)%colors.length]}))]);
+  const cs=stats(cnav);
+  // 成员间平均IC相关
+  let cs2=0,cnt=0;
+  for(let i=0;i<mem.length;i++)for(let j=i+1;j<mem.length;j++){cs2+=Math.abs(CORR[mem[i].id-1][mem[j].id-1]);cnt++}
+  const avgCorr=cs2/cnt;
+  const best=[...aligned].sort((a,b)=>b.st.shp-a.st.shp)[0];
+  tb.innerHTML=
+    `<tr><td style="color:${CYAN}">组合（等权）</td><td class="num ${cs.ann>=0?'pos':'neg'}">${(cs.ann*100).toFixed(1)}%</td>
+     <td class="num">${cs.shp.toFixed(2)}</td><td class="num">${(cs.mdd*100).toFixed(1)}%</td><td class="num">${(cs.win*100).toFixed(0)}%</td></tr>`
+    +aligned.map(a=>`<tr><td>${a.f.name}${a.sgn<0?' <span style="color:var(--amber);font-size:9px">反向·已翻转</span>':''}</td><td class="num ${a.st.ann>=0?'pos':'neg'}">${(a.st.ann*100).toFixed(1)}%</td>
+     <td class="num">${a.st.shp.toFixed(2)}</td><td class="num">${(a.st.mdd*100).toFixed(1)}%</td>
+     <td class="num">${(a.st.win*100).toFixed(0)}%</td></tr>`).join('');
+  const flipped=aligned.filter(a=>a.sgn<0);
+  const wname={0:'全样本（2016.01—2026.09）',252:'近5年',151:'近3年',50:'近1年'}[cwin];
+  let verdict=`<b style="color:${AMBER}">评价窗口：${wname}</b>（净值、年化、夏普、回撤均为该窗口内重算）。 <b style="color:${CYAN}">成员IC平均相关 ${avgCorr.toFixed(2)}</b>（越低越好，&lt;0.3 说明成员间信息较独立）。`;
+  if(flipped.length)verdict+=` 成员中 ${flipped.map(a=>a.f.name).join('、')} 为反向因子，已自动翻转买卖方向后入组合（实际使用时就该这么用）。`;
+  if(cs.shp>best.st.shp) verdict+=` 组合夏普 ${cs.shp.toFixed(2)} 已超过最强成员 ${best.f.name}（${best.st.shp.toFixed(2)}），分散化生效——波动相互抵消，收益叠加。`;
+  else verdict+=` 组合夏普 ${cs.shp.toFixed(2)} 未超过最强成员 ${best.f.name}（${best.st.shp.toFixed(2)}）：成员相关性偏高时组合只会“摊平”收益而非增强，可考虑换成相关性更低的成员。`;
+  vd.innerHTML=verdict;
+}
+document.getElementById('pr-pv').onclick=()=>{markPreset('pv');combo=[83,99,62,42,16];renderList();renderCombo()};
+document.getElementById('pr-ls').onclick=()=>{markPreset('ls');
+  combo=[...F].filter(f=>!isMiss(f)).sort((a,b)=>selShp(b)-selShp(a)).slice(0,5).map(f=>f.id);renderList();renderCombo()};
+function winShp(f){const nav=cwin>0?f.anav.slice(-cwin):f.anav;return stats(nav).shp}
+function selShp(f){const nav=swin>0?f.anav.slice(-swin):f.anav;const v=stats(nav).shp;return isFinite(v)?v:-1e9}
+document.querySelectorAll('.cwin').forEach(b=>b.onclick=()=>{
+  cwin=+b.dataset.w;
+  document.querySelectorAll('.cwin').forEach(x=>x.classList.toggle('on',x===b));
+  renderCombo();});
+document.querySelectorAll('.swin').forEach(b=>b.onclick=()=>{
+  swin=+b.dataset.w;
+  document.querySelectorAll('.swin').forEach(x=>x.classList.toggle('on',x===b));
+  if(lastPreset==='ls')document.getElementById('pr-ls').onclick();  // 成员跟随选股窗口自动重选，所见即所得
+  else renderCombo();});
+document.getElementById('pr-mix').onclick=()=>{
+  // 从 |ICIR|>0.25 中贪心选低相关 6 个
+  const pool=[...F].filter(f=>Math.abs(f.icir5)>0.25).sort((a,b)=>Math.abs(b.icir5)-Math.abs(a.icir5));
+  const pick=[pool[0].id];
+  while(pick.length<6&&pick.length<pool.length){
+    let best=null,bs=1e9;
+    for(const f of pool){
+      if(pick.includes(f.id))continue;
+      const m=pick.reduce((a,id)=>a+Math.abs(CORR[f.id-1][id-1]),0)/pick.length;
+      if(m<bs){bs=m;best=f.id}
+    }
+    if(best==null)break;pick.push(best);
+  }
+  markPreset('mix');combo=pick;renderList();renderCombo()};
+
+/* ---------- tooltip（hover 解释 + 图表十字线） ---------- */
+const tip=document.getElementById('tip');
+document.addEventListener('mouseover',e=>{
+  const q=e.target.closest('.q');
+  if(q&&q.dataset.tip){
+    tip.style.display='block';tip.innerHTML=q.dataset.tip;
+    const r=q.getBoundingClientRect();
+    tip.style.left=Math.min(r.left,window.innerWidth-360)+'px';
+    tip.style.top=(r.bottom+8)+'px';
+    return;
+  }
+  tip.style.display='none';
+});
+document.addEventListener('mouseout',e=>{if(e.target.closest('.q'))tip.style.display='none'});
+document.querySelectorAll('canvas.chart').forEach(cv=>{
+  cv.addEventListener('mousemove',e=>{
+    const ch=cv._chart;if(!ch){tip.style.display='none';return}
+    const r=cv.getBoundingClientRect(),mx=e.clientX-r.left;
+    const n=ch.vals.length;
+    const i=Math.max(0,Math.min(n-1,Math.round((mx-ch.padL)/(ch.W-ch.padL-ch.padR)*(n-1))));
+    tip.style.display='block';
+    tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY-10)+'px';
+    tip.innerHTML=`${fmtDate(ch.dates[i])}<br><b style="color:${CYAN}">${ch.vals[i].toFixed(3)}</b>`;
+  });
+  cv.addEventListener('mouseleave',()=>tip.style.display='none');
+});
+
+/* ---------- 渲染调度（防白屏：字体/可见性/尺寸变化时重绘） ---------- */
+function renderAll(){renderOverview();if(cur)selectFactor(cur.id);renderCombo()}
+let rT;window.addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(renderAll,200)});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)renderAll()});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>renderAll());
+
+(function selfCheck(){
+  const miss=F.filter(f=>isMiss(f)).map(f=>f.id);
+  const t10=[...F].sort((a,b)=>safe(Math.abs(b.icir5))-safe(Math.abs(a.icir5))).slice(0,10);
+  let mono=true;
+  for(let i=1;i<t10.length;i++)if(Math.abs(t10[i].icir5)>Math.abs(t10[i-1].icir5)+1e-9)mono=false;
+  const lenOk=F.every(f=>f.lsnav.length===LD.length&&f.cum5.length===WD.length);
+  const yOk=F.every(f=>f.yearly.filter(v=>isFinite(v)).length>=1);
+  const ok=mono&&lenOk&&yOk;
+  const el=document.getElementById('selfck');
+  el.className=ok?'':'bad';
+  el.innerHTML= ok
+    ? `数据自检通过 ✓ 191因子序列长度一致 ✓ 排行榜单调性 ✓ 年度序列有效 ✓ ｜ 数据缺口 ${miss.length} 个（${miss.map(i=>'Alpha'+i).join('、')||'无'}）：已自动垫底、灰显并禁止入组合。每次打开本页都会重新执行此自检，若结果异常此处会变红警示。`
+    : `⚠ 数据自检未通过：${!mono?'排行榜顺序异常；':''}${!lenOk?'序列长度不齐；':''}${!yOk?'年度序列异常；':''} —— 当前结果不可信，请截图反馈。`;
+})()
+document.getElementById('h-sig').textContent=F.filter(f=>Math.abs(f.t5)>2).length;
+document.getElementById('h-icir').textContent=F.filter(f=>Math.abs(f.icir5)>0.3).length;
+document.getElementById('h-ls').textContent=F.filter(f=>f.lsShp>1).length;
+selectFactor(83);
+renderCombo();
+if(location.hash==='#combo-stress'){combo=[83,99,62,42,16,149];for(let k=0;k<6;k++){renderList();renderCombo()}setTimeout(()=>document.getElementById('combo').scrollIntoView(),300)}
+if(location.hash==='#combo-demo'){combo=[83,99,62,42,16,149];renderList();renderCombo();setTimeout(()=>document.getElementById('combo').scrollIntoView(),300)}
+requestAnimationFrame(renderAll);
+window.addEventListener('load',()=>setTimeout(renderAll,80));
+</script>
+</body>
+</html>
